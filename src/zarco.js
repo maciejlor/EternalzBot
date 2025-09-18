@@ -2,7 +2,6 @@
 require('dotenv').config();
 const { ClusterManager } = require('discord-hybrid-sharding');
 const path = require('path');
-const config = require('./config/config.json');
 
 const manager = new ClusterManager(
   path.join(__dirname, 'index.js'),
