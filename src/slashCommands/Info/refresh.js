@@ -1,6 +1,5 @@
 // src/slashCommands/Info/refresh.js
-const { SlashCommandBuilder, PermissionsBitField } = require('discord.js');
-const { TextDisplayBuilder, ContainerBuilder, SeparatorBuilder, MessageFlags } = require('discord.js');
+const { SlashCommandBuilder, PermissionsBitField, EmbedBuilder } = require('discord.js');
 const config = require('../../config/config.json');
 const fs = require('fs');
 const { REST, Routes } = require('discord.js');
@@ -18,16 +17,15 @@ module.exports = {
   run: async (client, interaction) => {
     // Check if user has admin permissions
     if (!interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-      const errorText = new TextDisplayBuilder()
-        .setContent(`${config.crossmark_emoji || '❌'} **Access Denied**\nYou need Administrator permissions to use this command.`);
-
-      const container = new ContainerBuilder()
-        .setAccentColor(parseInt(config.color.replace('#', ''), 16))
-        .addTextDisplayComponents(errorText);
+      const errorEmbed = new EmbedBuilder()
+        .setColor('#ff0000')
+        .setTitle(`${config.crossmark_emoji || '❌'} Access Denied`)
+        .setDescription('You need Administrator permissions to use this command.')
+        .setTimestamp();
 
       return interaction.reply({
-        flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
-        components: [container],
+        embeds: [errorEmbed],
+        ephemeral: true
       });
     }
 
@@ -91,28 +89,30 @@ module.exports = {
       );
 
       // Build success message
-      const successText = new TextDisplayBuilder()
-        .setContent(
-          `${config.checkmark_emoji || '✅'} **Commands Refreshed Successfully!**\n\n` +
-          `**Loaded Commands:** ${loadedCommands.length}\n` +
-          `${loadedCommands.map(name => `• \`${name}\``).join('\n')}\n\n` +
-          (skippedCommands.length > 0 ? 
-            `**Skipped Commands:** ${skippedCommands.length}\n` +
-            `${skippedCommands.map(name => `• \`${name}\``).join('\n')}` 
-            : ''
-          )
-        );
+      const successEmbed = new EmbedBuilder()
+        .setColor(config.color || '#5b5078')
+        .setTitle(`${config.checkmark_emoji || '✅'} Commands Refreshed Successfully!`)
+        .addFields([
+          { 
+            name: `Loaded Commands (${loadedCommands.length})`, 
+            value: loadedCommands.length > 0 ? loadedCommands.map(name => `• \`${name}\``).join('\n') : 'None',
+            inline: false 
+          }
+        ])
+        .setTimestamp();
 
-      const separator = new SeparatorBuilder();
-      const container = new ContainerBuilder()
-        .setAccentColor(parseInt(config.color.replace('#', ''), 16))
-        .addSeparatorComponents(separator)
-        .addTextDisplayComponents(successText)
-        .addSeparatorComponents(separator);
+      if (skippedCommands.length > 0) {
+        successEmbed.addFields([
+          { 
+            name: `Skipped Commands (${skippedCommands.length})`, 
+            value: skippedCommands.map(name => `• \`${name}\``).join('\n'),
+            inline: false 
+          }
+        ]);
+      }
 
       await interaction.editReply({
-        flags: MessageFlags.IsComponentsV2,
-        components: [container],
+        embeds: [successEmbed]
       });
 
       console.log(`[REFRESH] Commands refreshed by ${interaction.user.tag} (${interaction.user.id})`);
@@ -120,19 +120,14 @@ module.exports = {
     } catch (error) {
       console.error('[REFRESH ERROR]', error);
 
-      const errorText = new TextDisplayBuilder()
-        .setContent(
-          `${config.crossmark_emoji || '❌'} **Refresh Failed**\n\n` +
-          `An error occurred while refreshing commands:\n\`\`\`${error.message}\`\`\``
-        );
-
-      const container = new ContainerBuilder()
-        .setAccentColor(parseInt(config.color.replace('#', ''), 16))
-        .addTextDisplayComponents(errorText);
+      const errorEmbed = new EmbedBuilder()
+        .setColor('#ff0000')
+        .setTitle(`${config.crossmark_emoji || '❌'} Refresh Failed`)
+        .setDescription(`An error occurred while refreshing commands:\n\`\`\`${error.message}\`\`\``)
+        .setTimestamp();
 
       await interaction.editReply({
-        flags: MessageFlags.IsComponentsV2,
-        components: [container],
+        embeds: [errorEmbed]
       }).catch(console.error);
     }
   },

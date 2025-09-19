@@ -1,6 +1,5 @@
 // src/slashCommands/Utility/ping.js
-const { SlashCommandBuilder, PermissionsBitField } = require('discord.js');
-const { TextDisplayBuilder, ContainerBuilder, SeparatorBuilder, MessageFlags } = require('discord.js');
+const { SlashCommandBuilder, PermissionsBitField, EmbedBuilder } = require('discord.js');
 const config = require('../../config/config.json');
 
 module.exports = {
@@ -29,41 +28,33 @@ module.exports = {
         .map((perm) => Object.keys(PermissionsBitField.Flags).find((key) => PermissionsBitField.Flags[key] === perm))
         .join(', ');
 
-      const errorText = new TextDisplayBuilder()
-        .setContent(`⚠ **Missing Permissions**\nI need the following permissions to run this command: **${permNames}**`);
-
-      const sep = new SeparatorBuilder();
-      const container = new ContainerBuilder()
-        .setAccentColor(parseInt(config.color.replace('#', ''), 16))
-        .addSeparatorComponents(sep)
-        .addTextDisplayComponents(errorText)
-        .addSeparatorComponents(sep);
+      const errorEmbed = new EmbedBuilder()
+        .setColor(config.color || '#5b5078')
+        .setTitle('⚠ Missing Permissions')
+        .setDescription(`I need the following permissions to run this command:\n**${permNames}**`)
+        .setTimestamp();
 
       return interaction.reply({
-        flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
-        components: [container],
+        embeds: [errorEmbed],
+        ephemeral: true
       });
     }
 
     // Measure latency
     const sent = Date.now();
-    const pingText = new TextDisplayBuilder()
-      .setContent(
-        `# 🏓 **Pong!**\n` +
-        `**WebSocket Ping:** ${client.ws.ping}ms\n` +
-        `**API Response Time:** ${Date.now() - sent}ms`
-      );
-
-    const separator = new SeparatorBuilder();
-    const container = new ContainerBuilder()
-      .setAccentColor(parseInt(config.color.replace('#', ''), 16))
-      .addSeparatorComponents(separator)
-      .addTextDisplayComponents(pingText)
-      .addSeparatorComponents(separator);
+    
+    const pingEmbed = new EmbedBuilder()
+      .setColor(config.color || '#5b5078')
+      .setTitle('🏓 Pong!')
+      .addFields([
+        { name: 'WebSocket Ping', value: `${client.ws.ping}ms`, inline: true },
+        { name: 'API Response Time', value: `${Date.now() - sent}ms`, inline: true }
+      ])
+      .setTimestamp()
+      .setFooter({ text: 'Bot Status', iconURL: client.user.displayAvatarURL() });
 
     await interaction.reply({
-      flags: MessageFlags.IsComponentsV2,
-      components: [container],
+      embeds: [pingEmbed]
     });
   },
 };

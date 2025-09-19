@@ -1,6 +1,5 @@
 // TruckersMP Event Command
-const { SlashCommandBuilder, PermissionsBitField } = require('discord.js');
-const { TextDisplayBuilder, ContainerBuilder, SeparatorBuilder, MessageFlags, SeparatorSpacingSize, MediaGalleryBuilder, MediaGalleryItemBuilder } = require('discord.js');
+const { SlashCommandBuilder, PermissionsBitField, EmbedBuilder } = require('discord.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -49,7 +48,7 @@ module.exports = {
         .setRequired(true))
     .addStringOption(option =>
       option.setName('route_image')
-        .setDescription('Route map image URL')
+        .setDescription('Image URL for route map')
         .setRequired(true))
     .addStringOption(option =>
       option.setName('truck_name')
@@ -100,8 +99,6 @@ module.exports = {
       const botMember = interaction.guild.members.me;
       const canMentionEveryone = botMember.permissions.has(PermissionsBitField.Flags.MentionEveryone);
       console.log('[EVENT] Can mention everyone:', canMentionEveryone);
-      
-      // We'll send the event announcement directly as the main reply
 
       // Get all the options
       console.log('[EVENT] Getting options');
@@ -177,137 +174,73 @@ module.exports = {
         });
         
       } catch (error) {
-        const errorText = new TextDisplayBuilder()
-          .setContent(`❌ **Geçersiz Zaman Formatı**\n${error.message}\n\n**Örnekler:**\n• "17:00" (17:00 UTC)\n• "18:30 UTC"\n• "1694786400" (Unix timestamp)`);
-
-        const container = new ContainerBuilder()
-          .setAccentColor(0x5b5078)
-          .addTextDisplayComponents(errorText);
+        const errorEmbed = new EmbedBuilder()
+          .setColor('#ff0000')
+          .setTitle('❌ Geçersiz Zaman Formatı')
+          .setDescription(`${error.message}\n\n**Örnekler:**\n• "17:00" (17:00 UTC)\n• "18:30 UTC"\n• "1694786400" (Unix timestamp)`)
+          .setTimestamp();
 
         return interaction.reply({
-          flags: MessageFlags.IsComponentsV2,
-          components: [container],
+          embeds: [errorEmbed],
           ephemeral: true
         });
       }
 
-    // Create the event information section
-    const eventInfoText = new TextDisplayBuilder()
-      .setContent(
-        `## <:ETeventnote:1372172882649546832>  Etkinlik Bilgileri\n` +
-        `<:ETeventinfo:1372172879994683543>  Tarih: ${date}\n` +
-        `<:ETtime:1372172933002301561>  Toplanma Saati: <t:${meetTimeNum}:t>\n` +
-        `<:ETtime:1372172933002301561> Ayrılış Saati: <t:${departureTimeNum}:t>\n` +
-        `<:ETstart:1372176513935347804>  Başlangıç Şehri: ${startCity}\n` +
-        `<:ETend:1372176547804610680>  Bitiş Şehri: ${endCity}\n` +
-        `<:ETevent:1371863304833597542>  Sunucu: ${server}\n` +
-        `<:ETDLC:1372178157008064573>  DLC Gerekli: ${dlc}`
-      );
+      // Create the main event embed
+      const eventEmbed = new EmbedBuilder()
+        .setColor('#5b5078')
+        .setTitle('🚛 Etkinlik Bilgileri')
+        .addFields([
+          { name: '📅 Tarih', value: date, inline: true },
+          { name: '🕐 Toplanma Saati', value: `<t:${meetTimeNum}:t>`, inline: true },
+          { name: '🕐 Ayrılış Saati', value: `<t:${departureTimeNum}:t>`, inline: true },
+          { name: '🏁 Başlangıç Şehri', value: startCity, inline: true },
+          { name: '🏁 Bitiş Şehri', value: endCity, inline: true },
+          { name: '🌐 Sunucu', value: server, inline: true },
+          { name: '📦 DLC Gerekli', value: dlc, inline: true },
+          { name: '📊 Slot Bilgileri', value: `**Firmalar & Şehir:** ${slotCompanies}\n**Slot Sayısı:** ${slotNumber}`, inline: false }
+        ])
+        .setImage(slotImage)
+        .setTimestamp()
+        .setFooter({ text: 'EternalZ Event', iconURL: client.user.displayAvatarURL() });
 
-    const separator1 = new SeparatorBuilder()
-      .setDivider(true)
-      .setSpacing(SeparatorSpacingSize.Small);
+      // Create route embed
+      const routeEmbed = new EmbedBuilder()
+        .setColor('#5b5078')
+        .setTitle('🗺️ Rota Bilgileri')
+        .addFields([
+          { name: '📏 Mesafe', value: `${kmRoute} km`, inline: true },
+          { name: '🛣️ Rota', value: `${startCity} ➜ ${endCity}`, inline: true }
+        ])
+        .setImage(routeImage);
 
-    // Create the slot information section
-    const slotInfoText = new TextDisplayBuilder()
-      .setContent(
-        `## <:ETeventnote:1372172882649546832>  Slot\n` +
-        `<:ETDLC:1372178157008064573> **Firmalar & Şehir: ${slotCompanies}**\n` +
-        `<:ETDLC:1372178157008064573> **Slot Sayısı: ${slotNumber}**`
-      );
-    
-    // Create slot image gallery
-    const slotImageGallery = new MediaGalleryBuilder()
-      .addItems(new MediaGalleryItemBuilder().setURL(slotImage));
+      // Create vehicle embed
+      const vehicleEmbed = new EmbedBuilder()
+        .setColor('#5b5078')
+        .setTitle('🚚 Araç Bilgileri')
+        .addFields([
+          { name: '🚛 Kamyon', value: truckName, inline: true },
+          { name: '🚛 Dorse', value: trailerName, inline: true }
+        ])
+        .setImage(imgurTruck);
 
-    const separator2 = new SeparatorBuilder()
-      .setDivider(true)
-      .setSpacing(SeparatorSpacingSize.Small);
+      // Create trailer embed
+      const trailerEmbed = new EmbedBuilder()
+        .setColor('#5b5078')
+        .setTitle('🚛 Dorse Detayı')
+        .setImage(imgurTrailer);
 
-    // Create the route information section
-    const routeInfoText = new TextDisplayBuilder()
-      .setContent(
-        `## <:ETeventnote:1372172882649546832>  Rota\n` +
-        `<:ETDLC:1372178157008064573> **Rota Uzunluğu: ${kmRoute} km**`
-      );
-    
-    // Create route image gallery
-    const routeImageGallery = new MediaGalleryBuilder()
-      .addItems(new MediaGalleryItemBuilder().setURL(routeImage));
+      // Create banner embed
+      const bannerEmbed = new EmbedBuilder()
+        .setColor('#5b5078')
+        .setImage('https://i.imgur.com/S7b0oIZ.png');
 
-    const separator3 = new SeparatorBuilder()
-      .setDivider(true)
-      .setSpacing(SeparatorSpacingSize.Small);
-
-    // Create the truck and trailer information section
-    const vehicleInfoText = new TextDisplayBuilder()
-      .setContent(
-        `## <:ETeventnote:1372172882649546832> Kamyon ve Dorse Bilgileri\n` +
-        `<:etarrow:1372179048242872342>  Kamyon Adı: ${truckName}\n` +
-        `<:etarrow:1372179048242872342>  Dorse Adı: ${trailerName}`
-      );
-    
-    // Create truck and trailer image gallery
-    const vehicleImageGallery = new MediaGalleryBuilder()
-      .addItems(
-        new MediaGalleryItemBuilder().setURL(imgurTruck),
-        new MediaGalleryItemBuilder().setURL(imgurTrailer)
-      );
-
-    // Create banner image at the end
-    const bannerImageGallery = new MediaGalleryBuilder()
-      .addItems(new MediaGalleryItemBuilder().setURL('https://i.imgur.com/S7b0oIZ.png'));
-
-    // Create the main container
-    const container = new ContainerBuilder()
-      .setAccentColor(0x5b5078)
-      .addTextDisplayComponents(eventInfoText)
-      .addSeparatorComponents(separator1)
-      .addTextDisplayComponents(slotInfoText)
-      .addMediaGalleryComponents(slotImageGallery)
-      .addSeparatorComponents(separator2)
-      .addTextDisplayComponents(routeInfoText)
-      .addMediaGalleryComponents(routeImageGallery)
-      .addSeparatorComponents(separator3)
-      .addTextDisplayComponents(vehicleInfoText)
-      .addMediaGalleryComponents(vehicleImageGallery);
-
-      // Send @everyone ping + embed together in ONE message
-      console.log('[EVENT] Sending ping + embed together');
-      
-      // Add @everyone to the first text component of the embed
-      const eventInfoTextWithPing = new TextDisplayBuilder()
-        .setContent(
-          (canMentionEveryone ? '@everyone\n\n' : '') +
-          `## <:ETeventnote:1372172882649546832>  Etkinlik Bilgileri\n` +
-          `<:ETeventinfo:1372172879994683543>  Tarih: ${date}\n` +
-          `<:ETtime:1372172933002301561>  Toplanma Saati: <t:${meetTimeNum}:t>\n` +
-          `<:ETtime:1372172933002301561> Ayrılış Saati: <t:${departureTimeNum}:t>\n` +
-          `<:ETstart:1372176513935347804>  Başlangıç Şehri: ${startCity}\n` +
-          `<:ETend:1372176547804610680>  Bitiş Şehri: ${endCity}\n` +
-          `<:ETevent:1371863304833597542>  Sunucu: ${server}\n` +
-          `<:ETDLC:1372178157008064573>  DLC Gerekli: ${dlc}`
-        );
-
-      // Recreate container with ping in the embed
-      const containerWithPing = new ContainerBuilder()
-        .setAccentColor(0x5b5078)
-        .addTextDisplayComponents(eventInfoTextWithPing)
-        .addSeparatorComponents(separator1)
-        .addTextDisplayComponents(slotInfoText)
-        .addMediaGalleryComponents(slotImageGallery)
-        .addSeparatorComponents(separator2)
-        .addTextDisplayComponents(routeInfoText)
-        .addMediaGalleryComponents(routeImageGallery)
-        .addSeparatorComponents(separator3)
-        .addTextDisplayComponents(vehicleInfoText)
-        .addMediaGalleryComponents(vehicleImageGallery)
-        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
-        .addMediaGalleryComponents(bannerImageGallery);
+      // Send the message with @everyone ping if allowed
+      const content = canMentionEveryone ? '@everyone' : '';
 
       await interaction.reply({
-        flags: MessageFlags.IsComponentsV2,
-        components: [containerWithPing],
+        content: content,
+        embeds: [eventEmbed, routeEmbed, vehicleEmbed, trailerEmbed, bannerEmbed],
         allowedMentions: canMentionEveryone ? { 
           everyone: true,
           parse: ['everyone']
